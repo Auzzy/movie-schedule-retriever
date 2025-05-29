@@ -239,39 +239,46 @@ def _load_schedule(page):
 
     return schedule
 
-def retrieve_page(showdate):
+def retrieve_page(theater, showdate):
+    slug = THEATER_SLUG_DICT[theater]
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
-        page.goto(f"https://www.fandango.com/amc-methuen-20-aaoze/theater-page?format=all&date={showdate.isoformat()}")
+        page.goto(f"https://www.fandango.com/{slug}/theater-page?format=all&date={showdate.isoformat()}")
         content = page.content()
         browser.close()
     return content
 
 
-def showtimes_text_iter(filepath, showdate, date_range):
+def showtimes_text_iter(theater, filepath, showdate, date_range):
     if filepath:
         with open(filepath) as showtimes_file:
             yield showtimes_file.read()
     elif showdate:
-        yield retrieve_page(showdate)
+        yield retrieve_page(theater, showdate)
     elif date_range:
         current_date, end_date = date_range
         while current_date <= end_date:
-            yield retrieve_page(current_date)
+            yield retrieve_page(theater, current_date)
             current_date += timedelta(days=1)
 
 
-def main(filepath, showdate, date_range, name_only, filter_params):
+def load_schedules_by_day_html(theater, filepath, showdate, date_range, filter_params):
     schedules_by_day = []
     print(".", end="", flush=True)
-    for showtimes_text in showtimes_text_iter(filepath, showdate, date_range):
+    for showtimes_text in showtimes_text_iter(theater, filepath, showdate, date_range):
         page = BeautifulSoup(showtimes_text, 'html.parser')
         schedule = _load_schedule(page)
         filtered_schedule = schedule.filter(filter_params)
         schedules_by_day.append(filtered_schedule)
         print(".", end="", flush=True)
     print(end="\n\n")
+
+    return schedules_by_day
+
+
+def main(theater, filepath, showdate, date_range, name_only, filter_params):
+    schedules_by_day = load_schedules_by_day_html(theater, filepath, showdate, date_range, filter_params)
 
     schedule_range = FullSchedule.create(schedules_by_day)
     print(schedule_range.output(name_only))
@@ -345,4 +352,4 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     filter_params = Filter(args.earliest, args.latest, args.movie, args.not_movie, args.format, args.not_format)
-    main(args.filepath, args.date, args.date_range, args.name_only, filter_params)
+    main(args.theater, args.filepath, args.date, args.date_range, args.name_only, filter_params)
