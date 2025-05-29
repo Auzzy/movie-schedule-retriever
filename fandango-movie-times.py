@@ -29,23 +29,23 @@ class Filter:
     def __init__(self, earliest_start, latest_start, movies, exclude_movies, fmts, exclude_fmts):
         self.earliest_start = earliest_start
         self.latest_start = latest_start
-        self.movies = movies
-        self.exclude_movies = exclude_movies
+        self.movies = [m.lower() for m in (movies or [])]
+        self.exclude_movies = [m.lower() for m in (exclude_movies or [])]
         self.fmts = fmts
         self.exclude_fmts = exclude_fmts
 
     def apply_movie_filter(self, name):
         if self.movies:
-            return name in self.movies
+            return name.lower() in self.movies
         elif self.exclude_movies:
-            return name not in self.exclude_movies
+            return name.lower() not in self.exclude_movies
         return True
 
     def apply_start_filter(self, start):
-        if self.earliest_start:
-            return start >= self.earliest_start
-        if self.latest_start:
-            return start <= self.latest_start
+        if self.earliest_start and start < self.earliest_start:
+            return False
+        if self.latest_start and start > self.latest_start:
+            return False
         return True
 
 
@@ -86,7 +86,7 @@ class Showing:
         return filter_params.apply_start_filter(self.start.time())
 
     def output(self, show_date):
-        date_str = f"{self.start.strftime('%B %d')} " if show_date else ""
+        date_str = f"{self.start.strftime('%a %B %d')} " if show_date else ""
         time_fmt = "%H:%M"
         dur_str = f"{self.start.strftime(time_fmt)}"
         if self.start != self.end:
