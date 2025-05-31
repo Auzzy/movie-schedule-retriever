@@ -3,7 +3,7 @@ import calendar
 from datetime import date, datetime, timedelta
 
 from fandango_json import load_schedules_by_day
-from schedule import PIVOT_DAY, THEATER_SLUG_DICT, WEEKDAYS, Filter, FullSchedule
+from schedule import PIVOT_DAY, THEATER_SLUG_DICT, WEEKDAYS, WEEKDAY_ABBRS, Filter, FullSchedule
 
 
 def main(theater, filepath, showdate, date_range, name_only, filter_params):
