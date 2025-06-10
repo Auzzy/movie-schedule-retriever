@@ -54,7 +54,7 @@ def parse_args():
             try:
                 start = date_str(value[:10])
             except argparse.ArgumentTypeError as exc:
-                start_str, end_str = value.split("-")
+                start_str, end_str = value.split("-", 1)
                 start = date_str(start_str.strip())
                 end = date_str(end_str.strip())
             else:
