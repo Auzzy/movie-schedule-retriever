@@ -56,7 +56,7 @@ class Filter:
 class Showing:
     @staticmethod
     def _simplify_format(fmt):
-        match fmt.lower():
+        match fmt:
             case "dolby cinema @ amc": return "Dolby"
             case "reald 3d": return "3D"
             case "acx": return "Apple Cinemas Experience"
@@ -70,19 +70,22 @@ class Showing:
 
     @staticmethod
     def create(attributes, raw_start_time, runtime_min, day):
+        attributes = [a.lower() for a in attributes]
         fmt = Showing._simplify_format(attributes[0])
-        languages = [attr.rsplit(maxsplit=1)[0] for attr in attributes if attr.endswith("Language")]
-        is_open_caption = "Open caption" in attributes
+        languages = [attr.rsplit(maxsplit=1)[0] for attr in attributes if attr.endswith("language")]
+        is_open_caption = "open caption" in attributes
+        no_alist = "alternative content" in attributes or "no passes" in attributes
 
         start_time = Showing._parse_showtime(raw_start_time)
         start = datetime.combine(day, start_time)
         end = start + timedelta(minutes=runtime_min)
-        return Showing(fmt, languages, is_open_caption, start, end)
+        return Showing(fmt, languages, is_open_caption, no_alist, start, end)
 
-    def __init__(self, fmt, languages, is_open_caption, start, end):
+    def __init__(self, fmt, languages, is_open_caption, no_alist, start, end):
         self.fmt = fmt
         self.languages = languages
         self.is_open_caption = is_open_caption
+        self.no_alist = no_alist
         self.start = start
         self.end = end
 
@@ -98,8 +101,9 @@ class Showing:
 
         lang_str = f" ({', '.join(self.languages)})" if self.languages else ""
         open_cap_str = " (Open caption)" if self.is_open_caption else ""
+        no_alist_str = " (No A-List?)" if self.no_alist else ""
 
-        return f"{date_str}{dur_str} ({self.fmt}){lang_str}{open_cap_str}"
+        return f"{date_str}{dur_str} ({self.fmt}){lang_str}{open_cap_str}{no_alist_str}"
 
 
 class Movie:
