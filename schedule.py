@@ -128,6 +128,14 @@ class Movie:
         for raw_time in raw_times:
             self.showtimes.append(Showing.create(attributes, raw_time, self.runtime_min, day))
 
+    @property
+    def first(self):
+        return min(self.showtimes, key=lambda s: s.start).start
+
+    @property
+    def last(self):
+        return max(self.showtimes, key=lambda s: s.start).start
+
     def __bool__(self):
         return bool(self.showtimes)
 
@@ -142,10 +150,19 @@ class Movie:
                 new_movie.showtimes.append(showtime)
         return new_movie
 
-    def output(self, name_only, show_date):
+    def output(self, name_only, date_only, schedule_start, schedule_end):
+        multi_day = schedule_start != schedule_end
+
         output = self.name
         if not name_only:
-            output += '\n' + '\n'.join(showtime.output(show_date) for showtime in sorted(self.showtimes, key=lambda s: s.start))
+            if date_only:
+                first, last = min(self.showtimes, key=lambda s: s.start), max(self.showtimes, key=lambda s: s.start)
+                if multi_day and (first.start.date() != schedule_start or last.start.date() != schedule_end):
+                    first_date_str = first.start.strftime('%a, %B %d')
+                    last_date_str = last.start.strftime('%a, %B %d')
+                    output += f" ({first_date_str}" + (")" if first_date_str == last_date_str else f" to {last_date_str})")
+            else:
+                output += '\n' + '\n'.join(showtime.output(multi_day) for showtime in sorted(self.showtimes, key=lambda s: s.start))
         return output
 
 
@@ -167,14 +184,14 @@ class DaySchedule:
                 new_schedule.movies.append(filtered_movie)
         return new_schedule
 
-    def output(self, name_only):
+    def output(self, name_only, date_only):
         date_str = self.day.strftime('%a, %B %d, %Y')
         seplen = len(date_str) + 2
         output = f"""{'-' * seplen}
  {date_str}
 {'-' * seplen}
 """
-        output += '\n'.join(movie.output(name_only, show_date=False) for movie in sorted(self.movies, key=lambda m: m.name))
+        output += '\n'.join(movie.output(name_only, False, self.day, self.day) for movie in sorted(self.movies, key=lambda m: m.name))
         return output
 
 
@@ -199,16 +216,21 @@ class FullSchedule:
         self.end = end
         self.movies = movies
 
-    def output(self, name_only):
-        show_date = self.start != self.end
+    def output(self, name_only, date_only):
+        single_day = self.start != self.end
 
         start_date_str = self.start.strftime('%a, %B %d, %Y')
         end_date_str = self.end.strftime('%a, %B %d, %Y')
-        date_str = start_date_str + (f" - {end_date_str}" if show_date else "")
+        date_str = start_date_str + (f" - {end_date_str}" if single_day else "")
         seplen = len(date_str) + 2
         output = f"""{'-' * seplen}
  {date_str}
 {'-' * seplen}
 """
-        output += '\n'.join(movie.output(name_only, show_date=show_date) for movie in sorted(self.movies, key=lambda m: m.name))
+        # output += '\n'.join(movie.output(name_only, show_date=show_date) for movie in sorted(self.movies, key=lambda m: m.name))
+        movie_lines = []
+        for movie in sorted(self.movies, key=lambda m: m.name):
+            movie_date_only = date_only and (self.start != movie.first.date() or self.end != movie.last.date())
+            movie_lines.append(movie.output(name_only, date_only, self.start, self.end))
+        output += '\n'.join(movie_lines)
         return output

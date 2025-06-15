@@ -6,11 +6,11 @@ from fandango_json import load_schedules_by_day
 from schedule import PIVOT_DAY, THEATER_SLUG_DICT, WEEKDAYS, WEEKDAY_ABBRS, Filter, FullSchedule
 
 
-def main(theater, filepath, showdate, date_range, name_only, filter_params):
+def main(theater, filepath, showdate, date_range, name_only, date_only, filter_params):
     schedules_by_day = load_schedules_by_day(theater, filepath, showdate, date_range, filter_params)
 
     schedule_range = FullSchedule.create(schedules_by_day)
-    print(schedule_range.output(name_only))
+    print(schedule_range.output(name_only, date_only))
 
 
 def parse_args():
@@ -70,6 +70,7 @@ def parse_args():
     input_group.add_argument("--date", type=date_str)
     input_group.add_argument("--date-range", type=date_range_str)
     parser.add_argument("--name-only", action="store_true")
+    parser.add_argument("--date-only", action="store_true")
     parser.add_argument("--earliest", "-e", type=time_str)
     parser.add_argument("--latest", "-l", type=time_str)
     parser.add_argument("--movie", "-m", action="append")
@@ -81,4 +82,4 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     filter_params = Filter(args.earliest, args.latest, args.movie, args.not_movie, args.format, args.not_format)
-    main(args.theater, args.filepath, args.date, args.date_range, args.name_only, filter_params)
+    main(args.theater, args.filepath, args.date, args.date_range, args.name_only, args.date_only, filter_params)
