@@ -39,7 +39,7 @@ def _load_schedule(page):
         for showtimes_listing in showtimes_section("div", class_="thtr-mv-list__amenity-group"):
             attributes = [attr.get_text(strip=True) for attr in showtimes_listing.find("ul", class_="fd-list-inline").find_all("li")]
             raw_showtimes = [next(showtime.stripped_strings) for showtime in showtimes_listing.find("ol", class_="showtimes-btn-list").find_all("li")]
-            movie.add_raw_showtimes(attributes, raw_showtimes, day)
+            movie.add_raw_showings(attributes, raw_showtimes, day)
 
     return schedule
 

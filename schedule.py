@@ -122,22 +122,22 @@ class Movie:
     def __init__(self, name, runtime_min):
         self.name = name
         self.runtime_min = runtime_min
-        self.showtimes = []
+        self.showings = []
 
-    def add_raw_showtimes(self, attributes, raw_times, day):
+    def add_raw_showings(self, attributes, raw_times, day):
         for raw_time in raw_times:
-            self.showtimes.append(Showing.create(attributes, raw_time, self.runtime_min, day))
+            self.showings.append(Showing.create(attributes, raw_time, self.runtime_min, day))
 
     @property
     def first(self):
-        return min(self.showtimes, key=lambda s: s.start).start
+        return min(self.showings, key=lambda s: s.start).start
 
     @property
     def last(self):
-        return max(self.showtimes, key=lambda s: s.start).start
+        return max(self.showings, key=lambda s: s.start).start
 
     def __bool__(self):
-        return bool(self.showtimes)
+        return bool(self.showings)
 
     def filter(self, filter_params):
         new_movie = Movie(self.name, self.runtime_min)
@@ -145,9 +145,9 @@ class Movie:
         if not filter_params.apply_movie_filter(self.name):
             return new_movie
 
-        for showtime in self.showtimes:
-            if showtime.filter(filter_params):
-                new_movie.showtimes.append(showtime)
+        for showing in self.showings:
+            if showing.filter(filter_params):
+                new_movie.showings.append(showing)
         return new_movie
 
     def output(self, name_only, date_only, schedule_start, schedule_end):
@@ -156,13 +156,13 @@ class Movie:
         output = self.name
         if not name_only:
             if date_only:
-                first, last = min(self.showtimes, key=lambda s: s.start), max(self.showtimes, key=lambda s: s.start)
+                first, last = min(self.showings, key=lambda s: s.start), max(self.showings, key=lambda s: s.start)
                 if multi_day and (first.start.date() != schedule_start or last.start.date() != schedule_end):
                     first_date_str = first.start.strftime('%a, %B %d')
                     last_date_str = last.start.strftime('%a, %B %d')
                     output += f" ({first_date_str}" + (")" if first_date_str == last_date_str else f" to {last_date_str})")
             else:
-                output += '\n' + '\n'.join(showtime.output(multi_day) for showtime in sorted(self.showtimes, key=lambda s: s.start))
+                output += '\n' + '\n'.join(showing.output(multi_day) for showing in sorted(self.showings, key=lambda s: s.start))
         return output
 
 
@@ -204,7 +204,7 @@ class FullSchedule:
             days.append(schedule.day)
             for movie in schedule.movies:
                 if movie.name in movies:
-                    movies[movie.name].showtimes.extend(movie.showtimes)
+                    movies[movie.name].showings.extend(movie.showings)
                 else:
                     movies[movie.name] = movie
 

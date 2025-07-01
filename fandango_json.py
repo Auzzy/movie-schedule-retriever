@@ -22,7 +22,7 @@ def _load_schedule(showtimes_json):
         for showtimes_listing in showtimes_sections:
             attributes = [attr["name"] for attr in showtimes_listing["amenities"]]
             raw_showtimes = [showtime["date"] for showtime in showtimes_listing["showtimes"]]
-            movie.add_raw_showtimes(attributes, raw_showtimes, day)
+            movie.add_raw_showings(attributes, raw_showtimes, day)
 
     return schedule
 
