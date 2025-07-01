@@ -11,9 +11,13 @@ def _load_schedule(showtimes_json):
     day = date.fromisoformat(showtimes_json["viewModel"]["date"])
     schedule = DaySchedule(day)
     for movie_info in showtimes_json["viewModel"]["movies"]:
-        name, year_str = movie_info["title"].rsplit(maxsplit=1)
-        if year_str[0] != "(" or year_str[-1] != ")" or not all(c.isdigit() for c in year_str[1:-1]):
-            name += f" {year_str}"
+        if " " in movie_info["title"]:
+            name, year_str = movie_info["title"].rsplit(maxsplit=1)
+            if year_str[0] != "(" or year_str[-1] != ")" or not all(c.isdigit() for c in year_str[1:-1]):
+                name += f" {year_str}"
+        else:
+            name = movie_info["title"]
+
         runtime = movie_info["runtime"]
 
         movie = schedule.add_raw_movie(name, runtime)
