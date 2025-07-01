@@ -11,6 +11,7 @@ def main(theater, filepath, showdate, date_range, name_only, date_only, filter_p
 
     schedule_range = FullSchedule.create(schedules_by_day)
     print(schedule_range.output(name_only, date_only))
+    print(f"\n- {len(schedule_range)} showtimes")
 
 
 def parse_args():

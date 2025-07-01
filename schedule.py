@@ -165,6 +165,9 @@ class Movie:
                 output += '\n' + '\n'.join(showing.output(multi_day) for showing in sorted(self.showings, key=lambda s: s.start))
         return output
 
+    def __len__(self):
+        return len(self.showings)
+
 
 class DaySchedule:
     def __init__(self, day):
@@ -193,6 +196,9 @@ class DaySchedule:
 """
         output += '\n'.join(movie.output(name_only, False, self.day, self.day) for movie in sorted(self.movies, key=lambda m: m.name))
         return output
+
+    def __len__(self):
+        return sum(len(m) for m in self.movies)
 
 
 class FullSchedule:
@@ -234,3 +240,6 @@ class FullSchedule:
             movie_lines.append(movie.output(name_only, date_only, self.start, self.end))
         output += '\n'.join(movie_lines)
         return output
+
+    def __len__(self):
+        return sum(len(m) for m in self.movies)
