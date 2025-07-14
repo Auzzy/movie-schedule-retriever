@@ -36,9 +36,14 @@ def parse_args():
             return today + timedelta(days=(WEEKDAY_ABBRS.index(value) - today.weekday()) % 7)
         else:
             try:
-                return date.fromisoformat(value)
+                showdate = date.fromisoformat(value)
             except ValueError:
                 raise argparse.ArgumentTypeError("Expected date in ISO format (YYYY-MM-DD).")
+
+            if showdate < today:
+                raise argparse.ArgumentTypeError(f"Cannot choose a date in the past: {showdate.isoformat()} < {today.isoformat()}")
+
+            return showdate
 
     def date_range_str(value):
         if value.lower() == "movie week":
