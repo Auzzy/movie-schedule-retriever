@@ -56,9 +56,10 @@ class Filter:
 class Showing:
     @staticmethod
     def _simplify_format(fmt):
-        match fmt:
+        match fmt.lower():
             case "dolby cinema @ amc": return "Dolby"
             case "reald 3d": return "3D"
+            case "digital 3d": return "3D"
             case "acx": return "Apple Cinemas Experience"
             case "laser at amc": return "Standard"
             case value: return fmt
@@ -70,9 +71,9 @@ class Showing:
 
     @staticmethod
     def create(attributes, raw_start_time, runtime_min, day):
-        attributes = [a.lower() for a in attributes]
         fmt = Showing._simplify_format(attributes[0])
-        languages = [attr.rsplit(maxsplit=1)[0] for attr in attributes if attr.endswith("language")]
+        attributes = [a.lower() for a in attributes]
+        languages = [attr.rsplit(maxsplit=1)[0] for attr in attributes if attr.lower().endswith("language")]
         is_open_caption = "open caption" in attributes
         no_alist = "alternative content" in attributes or "no passes" in attributes
 

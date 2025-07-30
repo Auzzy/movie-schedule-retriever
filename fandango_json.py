@@ -22,9 +22,16 @@ def _load_schedule(showtimes_json):
 
         movie = schedule.add_raw_movie(name, runtime)
 
-        showtimes_sections = itertools.chain.from_iterable([fmt["amenityGroups"] for fmt in movie_info["variants"]])
-        for showtimes_listing in showtimes_sections:
-            attributes = [attr["name"] for attr in showtimes_listing["amenities"]]
+        showtimes_sections = itertools.chain([(fmt["format"], ag) for fmt in movie_info["variants"] for ag in fmt["amenityGroups"]])
+        for heading, showtimes_listing in showtimes_sections:
+            raw_amenities = showtimes_listing.get("amenities", [])
+            if raw_amenities:
+                attributes = [attr["name"] for attr in showtimes_listing["amenities"]]
+            elif showtimes_listing.get("isDolby", False):
+                attributes = ["dolby cinema @ amc"]
+            else:
+                attributes = [heading]
+
             raw_showtimes = [showtime["date"] for showtime in showtimes_listing["showtimes"]]
             movie.add_raw_showings(attributes, raw_showtimes, day)
 
