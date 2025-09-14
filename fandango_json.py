@@ -37,6 +37,7 @@ def _load_schedule(showtimes_json):
 
     return schedule
 
+
 def _retrieve_json(theater, showdate):
     url = f"https://www.fandango.com/napi/theaterMovieShowtimes/{THEATER_CODE_DICT[theater]}?startDate={showdate.isoformat()}"
     headers = {"referer": f"https://www.fandango.com/{THEATER_SLUG_DICT[theater]}/theater-page?format=all&date={showdate.isoformat()}"}
@@ -60,10 +61,11 @@ def load_schedules_by_day(theater, filepath, showdate, date_range, filter_params
     schedules_by_day = []
     print(".", end="", flush=True)
     for showtimes_json in _showtimes_iter(theater, filepath, showdate, date_range):
-        schedule = _load_schedule(showtimes_json)
-        filtered_schedule = schedule.filter(filter_params)
-        schedules_by_day.append(filtered_schedule)
+        if "viewModel" in showtimes_json:
+            schedule = _load_schedule(showtimes_json)
+            filtered_schedule = schedule.filter(filter_params)
+            schedules_by_day.append(filtered_schedule)
+
         print(".", end="", flush=True)
-    print(end="\n\n")
 
     return schedules_by_day

@@ -9,6 +9,12 @@ from schedule import PIVOT_DAY, THEATER_SLUG_DICT, WEEKDAYS, WEEKDAY_ABBRS, Filt
 def main(theater, filepath, showdate, date_range, name_only, date_only, filter_params):
     schedules_by_day = load_schedules_by_day(theater, filepath, showdate, date_range, filter_params)
 
+    print(end="\n\n")
+
+    if not schedules_by_day:
+        print("Could not find any data for the requested date(s).")
+        return
+
     schedule_range = FullSchedule.create(schedules_by_day)
     print(schedule_range.output(name_only, date_only))
     print(f"\n- {len(schedule_range)} showtimes")
