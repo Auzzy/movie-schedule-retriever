@@ -26,6 +26,8 @@ THEATER_SLUG_DICT = {
 }
 WEEKDAYS = [day.lower() for day in calendar.day_name]
 WEEKDAY_ABBRS = [abbr.lower() for abbr in calendar.day_abbr]
+MONTHS = [day.lower() for day in calendar.month_name]
+MONTH_ABBRS = [abbr.lower() for abbr in calendar.month_abbr]
 PIVOT_DAY = WEEKDAYS.index("thursday")
 
 

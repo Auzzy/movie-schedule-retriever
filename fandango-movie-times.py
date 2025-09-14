@@ -3,7 +3,8 @@ import calendar
 from datetime import date, datetime, timedelta
 
 from fandango_json import load_schedules_by_day
-from schedule import PIVOT_DAY, THEATER_SLUG_DICT, WEEKDAYS, WEEKDAY_ABBRS, Filter, FullSchedule
+from schedule import MONTHS, MONTH_ABBRS, PIVOT_DAY, THEATER_SLUG_DICT, \
+                     WEEKDAYS, WEEKDAY_ABBRS, Filter, FullSchedule
 
 
 def main(theater, filepath, showdate, date_range, name_only, date_only, filter_params):
@@ -53,7 +54,20 @@ def parse_args():
             return showdate
 
     def date_range_str(value):
-        if value.lower() == "movie week":
+        def month_range(value):
+            today = date.today()
+            year = today.year + (0 if today.month <= monthno else 1)
+            start_day = today.day if today.month == monthno else 1
+            end_day = calendar.monthrange(year, monthno)[1]
+            return (date(year=year, month=monthno, day=start_day), date(year=year, month=monthno, day=end_day))
+
+        if value in MONTHS:
+            monthno = MONTHS.index(value)
+            start, end = month_range(monthno)
+        elif value in MONTH_ABBRS:
+            monthno = MONTH_ABBRS.index(value)
+            start, end = month_range(monthno)
+        elif value.lower() == "movie week":
             start = date.today()
             days_left = 6 if start.weekday() == PIVOT_DAY else ((PIVOT_DAY - start.weekday() - 1) % 7)
             end = start + timedelta(days=days_left)
