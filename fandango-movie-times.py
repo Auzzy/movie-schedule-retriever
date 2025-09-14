@@ -7,8 +7,8 @@ from schedule import MONTHS, MONTH_ABBRS, PIVOT_DAY, THEATER_SLUG_DICT, \
                      WEEKDAYS, WEEKDAY_ABBRS, Filter, FullSchedule
 
 
-def main(theater, filepath, showdate, date_range, name_only, date_only, filter_params):
-    schedules_by_day = load_schedules_by_day(theater, filepath, showdate, date_range, filter_params)
+def main(theater, filepath, date_range, name_only, date_only, filter_params):
+    schedules_by_day = load_schedules_by_day(theater, filepath, date_range, filter_params)
 
     print(end="\n\n")
 
@@ -38,10 +38,9 @@ def parse_args():
             return today
         elif value == "tomorrow":
             return today + timedelta(days=1)
-        elif value in WEEKDAYS:
-            return today + timedelta(days=(WEEKDAYS.index(value) - today.weekday()) % 7)
-        elif value in WEEKDAY_ABBRS:
-            return today + timedelta(days=(WEEKDAY_ABBRS.index(value) - today.weekday()) % 7)
+        elif value in WEEKDAYS or value in WEEKDAY_ABBRS:
+            weekdayno = WEEKDAYS.index(value) if value in WEEKDAYS else WEEKDAY_ABBRS.index(value)
+            return today + timedelta(days=(weekdayno - today.weekday()) % 7)
         else:
             try:
                 showdate = date.fromisoformat(value)
@@ -54,37 +53,36 @@ def parse_args():
             return showdate
 
     def date_range_str(value):
-        def month_range(value):
-            today = date.today()
+        today = date.today()
+        if value in MONTHS or value in MONTH_ABBRS:
+            monthno = MONTHS.index(value) if value in MONTHS else MONTH_ABBRS.index(value)
             year = today.year + (0 if today.month <= monthno else 1)
             start_day = today.day if today.month == monthno else 1
+            start = date(year=year, month=monthno, day=start_day)
             end_day = calendar.monthrange(year, monthno)[1]
-            return (date(year=year, month=monthno, day=start_day), date(year=year, month=monthno, day=end_day))
-
-        if value in MONTHS:
-            monthno = MONTHS.index(value)
-            start, end = month_range(monthno)
-        elif value in MONTH_ABBRS:
-            monthno = MONTH_ABBRS.index(value)
-            start, end = month_range(monthno)
+            end = date(year=year, month=monthno, day=end_day)
         elif value.lower() == "movie week":
-            start = date.today()
+            start = today
             days_left = 6 if start.weekday() == PIVOT_DAY else ((PIVOT_DAY - start.weekday() - 1) % 7)
             end = start + timedelta(days=days_left)
         elif value.lower() == "next movie week":
-            today = date.today()
             days_to_pivot = 7 if today.weekday() == PIVOT_DAY else ((PIVOT_DAY - today.weekday()) % 7)
             start = today + timedelta(days=days_to_pivot)
             end = start + timedelta(days=6)
         else:
             try:
-                start = date_str(value[:10])
-            except argparse.ArgumentTypeError as exc:
-                start_str, end_str = value.split("-", 1)
-                start = date_str(start_str.strip())
-                end = date_str(end_str.strip())
+                start = date_str(value)
+            except argparse.ArgumentTypeError:
+                try:
+                    start = date_str(value[:10])
+                except argparse.ArgumentTypeError:
+                    start_str, end_str = value.split("-", 1)
+                    start = date_str(start_str.strip())
+                    end = date_str(end_str.strip())
+                else:
+                    end = date_str(value[10:].split('-', 1)[1].strip())
             else:
-                end = date_str(value[10:].split('-', 1)[1].strip())
+                end = start
 
         return (start, end)
 
@@ -93,8 +91,7 @@ def parse_args():
     parser.add_argument("--theater", default="AMC Methuen", choices=sorted(THEATER_SLUG_DICT.keys()))
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument("--filepath")
-    input_group.add_argument("--date", type=date_str)
-    input_group.add_argument("--date-range", type=date_range_str)
+    input_group.add_argument("--date", type=date_range_str, dest="date_range")
     parser.add_argument("--name-only", action="store_true")
     parser.add_argument("--date-only", action="store_true")
     parser.add_argument("--earliest", "-e", type=time_str)
@@ -108,4 +105,4 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     filter_params = Filter(args.earliest, args.latest, args.movie, args.not_movie, args.format, args.not_format)
-    main(args.theater, args.filepath, args.date, args.date_range, args.name_only, args.date_only, filter_params)
+    main(args.theater, args.filepath, args.date_range, args.name_only, args.date_only, filter_params)

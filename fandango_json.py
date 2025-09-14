@@ -44,12 +44,10 @@ def _retrieve_json(theater, showdate):
     return requests.get(url, headers=headers).json()
 
 
-def _showtimes_iter(theater, filepath, showdate, date_range):
+def _showtimes_iter(theater, filepath, date_range):
     if filepath:
         with open(filepath) as showtimes_file:
             yield json.read(showtimes_file)
-    elif showdate:
-        yield _retrieve_json(theater, showdate)
     elif date_range:
         current_date, end_date = date_range
         while current_date <= end_date:
@@ -57,10 +55,10 @@ def _showtimes_iter(theater, filepath, showdate, date_range):
             current_date += timedelta(days=1)
 
 
-def load_schedules_by_day(theater, filepath, showdate, date_range, filter_params):
+def load_schedules_by_day(theater, filepath, date_range, filter_params):
     schedules_by_day = []
     print(".", end="", flush=True)
-    for showtimes_json in _showtimes_iter(theater, filepath, showdate, date_range):
+    for showtimes_json in _showtimes_iter(theater, filepath, date_range):
         if "viewModel" in showtimes_json:
             schedule = _load_schedule(showtimes_json)
             filtered_schedule = schedule.filter(filter_params)
