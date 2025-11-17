@@ -5,7 +5,7 @@ import os
 from mailtrap import Address, Attachment, Mail, MailtrapClient
 
 from fandango_json import load_schedules_by_day
-from schedule import Filter, FullSchedule, date_range_str
+from schedule import Filter, FullSchedule, date_range_str_parser
 
 
 THEATERS = {"AMC Methuen", "AMC Boston Common"}
@@ -44,7 +44,7 @@ def collect_schedules(theater, date_range):
     return schedule_range.output(name_only=False, date_only=True)
 
 def main():
-    dates = date_range_str("next movie week")
+    dates = date_range_str_parser("next movie week")
     theaters_to_schedule = {theater: collect_schedules(theater, dates) for theater in THEATERS}
     send_email(theaters_to_schedule)
 

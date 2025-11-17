@@ -35,7 +35,7 @@ class ParseError(ValueError):
     pass
 
 
-def time_str(value):
+def time_str_parser(value):
     if value[-1] in ("p", "a"):
         value = value.replace('p', 'pm').replace('a', 'am')
     time_fmt = "%I:%M%p" if value[-2:] in ("pm", "am") else "%H:%M"
@@ -44,7 +44,7 @@ def time_str(value):
     except ValueError:
         raise ParseError("Expected time in HH:MM format, optionally with am/pm.")
 
-def date_str(value):
+def date_str_parser(value):
     value = value.lower()
     today = date.today()
     if value == "today":
@@ -65,7 +65,7 @@ def date_str(value):
 
         return showdate
 
-def date_range_str(value):
+def date_range_str_parser(value):
     today = date.today()
     if value in MONTHS or value in MONTH_ABBRS:
         monthno = MONTHS.index(value) if value in MONTHS else MONTH_ABBRS.index(value)
@@ -84,16 +84,16 @@ def date_range_str(value):
         end = start + timedelta(days=6)
     else:
         try:
-            start = date_str(value)
+            start = date_str_parser(value)
         except ParseError:
             try:
-                start = date_str(value[:10])
+                start = date_str_parser(value[:10])
             except ParseError:
                 start_str, end_str = value.split("-", 1)
-                start = date_str(start_str.strip())
-                end = date_str(end_str.strip())
+                start = date_str_parser(start_str.strip())
+                end = date_str_parser(end_str.strip())
             else:
-                end = date_str(value[10:].split('-', 1)[1].strip())
+                end = date_str_parser(value[10:].split('-', 1)[1].strip())
         else:
             end = start
 
