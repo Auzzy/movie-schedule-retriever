@@ -1,10 +1,8 @@
 import argparse
-import calendar
-from datetime import date, datetime, timedelta
 
 from fandango_json import load_schedules_by_day
-from schedule import MONTHS, MONTH_ABBRS, PIVOT_DAY, THEATER_SLUG_DICT, \
-                     WEEKDAYS, WEEKDAY_ABBRS, Filter, FullSchedule
+from schedule import THEATER_SLUG_DICT, Filter, FullSchedule, ParseError, \
+                     date_range_str, time_str
 
 
 def main(theater, filepath, date_range, name_only, date_only, filter_params):
@@ -21,77 +19,20 @@ def main(theater, filepath, date_range, name_only, date_only, filter_params):
     print(f"\n- {len(schedule_range)} showtimes")
 
 
-def parse_args():
-    def time_str(value):
-        if value[-1] in ("p", "a"):
-            value = value.replace('p', 'pm').replace('a', 'am')
-        time_fmt = "%I:%M%p" if value[-2:] in ("pm", "am") else "%H:%M"
+def _wrap_parser(parser):
+    def parse(value):
         try:
-            return datetime.strptime(value, time_fmt).time()
-        except ValueError:
-            raise argparse.ArgumentTypeError("Expected time in HH:MM format, optionally with am/pm.")
+            return parser(value)
+        except ParseError as exc:
+            raise argparse.ArgumentTypeError(str(exc))
+    return parse
 
-    def date_str(value):
-        value = value.lower()
-        today = date.today()
-        if value == "today":
-            return today
-        elif value == "tomorrow":
-            return today + timedelta(days=1)
-        elif value in WEEKDAYS or value in WEEKDAY_ABBRS:
-            weekdayno = WEEKDAYS.index(value) if value in WEEKDAYS else WEEKDAY_ABBRS.index(value)
-            return today + timedelta(days=(weekdayno - today.weekday()) % 7)
-        else:
-            try:
-                showdate = date.fromisoformat(value)
-            except ValueError:
-                raise argparse.ArgumentTypeError("Expected date in ISO format (YYYY-MM-DD).")
-
-            if showdate < today:
-                raise argparse.ArgumentTypeError(f"Cannot choose a date in the past: {showdate.isoformat()} < {today.isoformat()}")
-
-            return showdate
-
-    def date_range_str(value):
-        today = date.today()
-        if value in MONTHS or value in MONTH_ABBRS:
-            monthno = MONTHS.index(value) if value in MONTHS else MONTH_ABBRS.index(value)
-            year = today.year + (0 if today.month <= monthno else 1)
-            start_day = today.day if today.month == monthno else 1
-            start = date(year=year, month=monthno, day=start_day)
-            end_day = calendar.monthrange(year, monthno)[1]
-            end = date(year=year, month=monthno, day=end_day)
-        elif value.lower() == "movie week":
-            start = today
-            days_left = 6 if start.weekday() == PIVOT_DAY else ((PIVOT_DAY - start.weekday() - 1) % 7)
-            end = start + timedelta(days=days_left)
-        elif value.lower() == "next movie week":
-            days_to_pivot = 7 if today.weekday() == PIVOT_DAY else ((PIVOT_DAY - today.weekday()) % 7)
-            start = today + timedelta(days=days_to_pivot)
-            end = start + timedelta(days=6)
-        else:
-            try:
-                start = date_str(value)
-            except argparse.ArgumentTypeError:
-                try:
-                    start = date_str(value[:10])
-                except argparse.ArgumentTypeError:
-                    start_str, end_str = value.split("-", 1)
-                    start = date_str(start_str.strip())
-                    end = date_str(end_str.strip())
-                else:
-                    end = date_str(value[10:].split('-', 1)[1].strip())
-            else:
-                end = start
-
-        return (start, end)
-
-
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--theater", default="AMC Methuen", choices=sorted(THEATER_SLUG_DICT.keys()))
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument("--filepath")
-    input_group.add_argument("--date", type=date_range_str, dest="date_range")
+    input_group.add_argument("--date", type=_wrap_parser(date_range_str), dest="date_range")
     parser.add_argument("--name-only", action="store_true")
     parser.add_argument("--date-only", action="store_true")
     parser.add_argument("--earliest", "-e", type=time_str)

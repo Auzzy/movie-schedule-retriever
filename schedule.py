@@ -1,6 +1,6 @@
 import calendar
 import re
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 RUNTIME_RE = re.compile(r"(?:(?P<hr>\d) hr)? ?(?:(?P<min>\d\d?) min)?")
 LANGUAGE_RE = re.compile("([a-z]+) spoken with ([a-z]+) subtitles")
@@ -31,7 +31,79 @@ MONTH_ABBRS = [abbr.lower() for abbr in calendar.month_abbr]
 PIVOT_DAY = WEEKDAYS.index("thursday")
 
 
+class ParseError(ValueError):
+    pass
+
+
+def time_str(value):
+    if value[-1] in ("p", "a"):
+        value = value.replace('p', 'pm').replace('a', 'am')
+    time_fmt = "%I:%M%p" if value[-2:] in ("pm", "am") else "%H:%M"
+    try:
+        return datetime.strptime(value, time_fmt).time()
+    except ValueError:
+        raise ParseError("Expected time in HH:MM format, optionally with am/pm.")
+
+def date_str(value):
+    value = value.lower()
+    today = date.today()
+    if value == "today":
+        return today
+    elif value == "tomorrow":
+        return today + timedelta(days=1)
+    elif value in WEEKDAYS or value in WEEKDAY_ABBRS:
+        weekdayno = WEEKDAYS.index(value) if value in WEEKDAYS else WEEKDAY_ABBRS.index(value)
+        return today + timedelta(days=(weekdayno - today.weekday()) % 7)
+    else:
+        try:
+            showdate = date.fromisoformat(value)
+        except ValueError:
+            raise ParseError("Expected date in ISO format (YYYY-MM-DD).")
+
+        if showdate < today:
+            raise ParseError(f"Cannot choose a date in the past: {showdate.isoformat()} < {today.isoformat()}")
+
+        return showdate
+
+def date_range_str(value):
+    today = date.today()
+    if value in MONTHS or value in MONTH_ABBRS:
+        monthno = MONTHS.index(value) if value in MONTHS else MONTH_ABBRS.index(value)
+        year = today.year + (0 if today.month <= monthno else 1)
+        start_day = today.day if today.month == monthno else 1
+        start = date(year=year, month=monthno, day=start_day)
+        end_day = calendar.monthrange(year, monthno)[1]
+        end = date(year=year, month=monthno, day=end_day)
+    elif value.lower() == "movie week":
+        start = today
+        days_left = 6 if start.weekday() == PIVOT_DAY else ((PIVOT_DAY - start.weekday() - 1) % 7)
+        end = start + timedelta(days=days_left)
+    elif value.lower() == "next movie week":
+        days_to_pivot = 7 if today.weekday() == PIVOT_DAY else ((PIVOT_DAY - today.weekday()) % 7)
+        start = today + timedelta(days=days_to_pivot)
+        end = start + timedelta(days=6)
+    else:
+        try:
+            start = date_str(value)
+        except ParseError:
+            try:
+                start = date_str(value[:10])
+            except ParseError:
+                start_str, end_str = value.split("-", 1)
+                start = date_str(start_str.strip())
+                end = date_str(end_str.strip())
+            else:
+                end = date_str(value[10:].split('-', 1)[1].strip())
+        else:
+            end = start
+
+    return (start, end)
+
 class Filter:
+    @staticmethod
+    def empty():
+        return Filter(None, None, None, None, None, None)
+
     def __init__(self, earliest_start, latest_start, movies, exclude_movies, fmts, exclude_fmts):
         self.earliest_start = earliest_start
         self.latest_start = latest_start
