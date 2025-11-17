@@ -9,7 +9,7 @@ from schedule import THEATER_CODE_DICT, Filter, FullSchedule, date_range_str_par
 
 
 def send_email(theaters_to_schedule, subject):
-    sender_name = os.getenv("MAILTRAP SENDER", "Test Movie Sender")
+    sender_name = os.getenv("MAILTRAP_SENDER_NAME", "Test Movie Sender")
 
     attachments = []
     for theater, schedule in theaters_to_schedule.items():
