@@ -22,7 +22,8 @@ def _load_schedule(showtimes_json):
 
         movie = schedule.add_raw_movie(name, runtime)
 
-        showtimes_sections = itertools.chain([(fmt["format"], ag) for fmt in movie_info["variants"] for ag in fmt["amenityGroups"]])
+        # showtimes_sections = itertools.chain([(fmt["format"], ag) for fmt in movie_info["variants"] for ag in fmt["amenityGroups"]])
+        showtimes_sections = itertools.chain([(fmt["filmFormatHeader"], ag) for fmt in movie_info["variants"] for ag in fmt["amenityGroups"]])
         for heading, showtimes_listing in showtimes_sections:
             raw_amenities = showtimes_listing.get("amenities", [])
             if raw_amenities:
