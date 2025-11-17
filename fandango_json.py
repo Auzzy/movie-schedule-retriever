@@ -56,15 +56,17 @@ def _showtimes_iter(theater, filepath, date_range):
             current_date += timedelta(days=1)
 
 
-def load_schedules_by_day(theater, filepath, date_range, filter_params):
+def load_schedules_by_day(theater, filepath, date_range, filter_params, quiet=False):
     schedules_by_day = []
-    print(".", end="", flush=True)
+    if not quiet:
+        print(".", end="", flush=True)
     for showtimes_json in _showtimes_iter(theater, filepath, date_range):
         if "viewModel" in showtimes_json:
             schedule = _load_schedule(showtimes_json)
             filtered_schedule = schedule.filter(filter_params)
             schedules_by_day.append(filtered_schedule)
 
-        print(".", end="", flush=True)
+        if not quiet:
+            print(".", end="", flush=True)
 
     return schedules_by_day

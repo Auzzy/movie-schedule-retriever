@@ -34,7 +34,7 @@ def send_email(theaters_to_schedule):
 
 
 def collect_schedules(theater, date_range):
-    schedules_by_day = load_schedules_by_day(theater, None, date_range, Filter.empty())
+    schedules_by_day = load_schedules_by_day(theater, None, date_range, Filter.empty(), quiet=True)
 
     if not schedules_by_day:
         print("Could not find any data for the requested date(s).")
