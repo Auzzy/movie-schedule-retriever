@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 from datetime import date, timedelta
 from playwright.sync_api import sync_playwright
 
-from schedule import DaySchedule, THEATER_SLUG_DICT
+from retriever.schedule import DaySchedule, THEATER_SLUG_DICT
 
 
 RUNTIME_RE = re.compile(r"(?:(?P<hr>\d) hr)? ?(?:(?P<min>\d\d?) min)?")

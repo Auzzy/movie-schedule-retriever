@@ -4,7 +4,7 @@ import json
 import requests
 from datetime import date, timedelta
 
-from schedule import DaySchedule, THEATER_CODE_DICT, THEATER_SLUG_DICT
+from retriever.schedule import DaySchedule, THEATER_CODE_DICT, THEATER_SLUG_DICT
 
 
 def _load_schedule(showtimes_json):
