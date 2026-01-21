@@ -85,7 +85,7 @@ def _collect_schedule(theater, filepath, date_range, filter_params, quiet):
     return FullSchedule.create(schedules_by_day)
 
 
-def sqlite_main(theater, date_range):
+def db_main(theater, date_range):
     schedule_range = _collect_schedule(theater, None, date_range, Filter.empty(), False)
     db.store_showtimes(theater, schedule_range)
 
@@ -112,9 +112,8 @@ def main(args):
         cli_main(args.theater, args.filepath, args.date_range, args.name_only, args.date_only, filter_params)
     elif args.output == "email":
         email_main(args.date_range, args.theaters, args.frm, args.from_name, args.to)
-    elif args.output == "sqlite":
-        sqlite_main(args.theater, args.date_range)
-
+    elif args.output == "db":
+        db_main(args.theater, args.date_range)
 
 
 def parse_args():
@@ -145,10 +144,10 @@ def parse_args():
     email_parser.add_argument("--from-name", default="Test Movie Sender")
     email_parser.add_argument("--to")
 
-    sqlite_parser = subparsers.add_parser("sqlite", help="Output the result to an SQLite3 DB.")
-    sqlite_parser.set_defaults(output="sqlite")
-    sqlite_parser.add_argument("--theater", default="AMC Methuen", choices=sorted(THEATER_SLUG_DICT.keys()))
-    sqlite_parser.add_argument("--date", type=date_range_str_parser, dest="date_range", default="next movie week")
+    db_parser = subparsers.add_parser("db", help="Output the result to a database.")
+    db_parser.set_defaults(output="db")
+    db_parser.add_argument("--theater", default="AMC Methuen", choices=sorted(THEATER_SLUG_DICT.keys()))
+    db_parser.add_argument("--date", type=date_range_str_parser, dest="date_range", default="next movie week")
 
     return parser.parse_args()
 
