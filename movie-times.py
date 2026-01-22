@@ -87,7 +87,21 @@ def _collect_schedule(theater, filepath, date_range, filter_params, quiet):
 
 def db_main(theater, date_range):
     schedule_range = _collect_schedule(theater, None, date_range, Filter.empty(), False)
-    db.store_showtimes(theater, schedule_range)
+    raw_detected_showtimes = db.store_showtimes(theater, schedule_range)
+    all_showtimes = db.load_showtimes(theater, *date_range)
+
+    detected_showtimes = []
+    for showtime in raw_detected_showtimes:
+        detected_showtimes.append(tuple(showtime.values())[:-1])
+
+    deleted_showtimes = []
+    for showtime in all_showtimes:
+        showtime_dict = dict(showtime)
+        showtime_values = tuple(showtime_dict.values())[:-1]
+        if showtime_values not in detected_showtimes:
+            deleted_showtimes.append(showtime_dict)
+
+    db.delete_showtimes(deleted_showtimes)
 
 def email_main(dates, theaters, sender, sender_name, receiver):
     theaters = theaters or THEATER_CODE_DICT.keys()
