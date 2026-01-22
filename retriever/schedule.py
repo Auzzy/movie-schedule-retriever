@@ -136,6 +136,7 @@ class Showing:
             case "digital 3d": return "3D"
             case "acx": return "Apple Cinemas Experience"
             case "laser at amc": return "Standard"
+            case "reserved seating": return "Standard"
             case value: return fmt
 
     @staticmethod
