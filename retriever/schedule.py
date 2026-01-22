@@ -10,19 +10,23 @@ THEATER_CODE_DICT = {
     "AMC Methuen": "aaoze",
     "AMC Tyngsboro": "aadxs",
     "AMC Boston Common": "aapnv",
+    "AMC Causeway": "aayqs",
     "Apple Hooksett": "aauoc",
     "Apple Merrimack": "aatgl",
     "Showcase Randolph": "aaeea",
-    "O'Neil Epping": "aawvb"
+    "O'Neil Epping": "aawvb",
+    "O'Neil Londonderry": "aakgu"
 }
 THEATER_SLUG_DICT = {
     "AMC Methuen": "amc-methuen-20-aaoze",
     "AMC Tyngsboro": "amc-tyngsboro-12-aadxs",
     "AMC Boston Common": "amc-boston-common-19-aapnv",
+    "AMC Causeway": "amc-causeway-13-aayqs",
     "Apple Hooksett": "apple-cinemas-hooksett-imax-aauoc",
     "Apple Merrimack": "apple-cinemas-merrimack-aatgl",
     "Showcase Randolph": "showcase-cinemas-de-lux-randolph-aaeea",
-    "O'Neil Epping": "oneil-cinemas-at-brickyard-square-aawvb"
+    "O'Neil Epping": "oneil-cinemas-at-brickyard-square-aawvb",
+    "O'Neil Londonderry": "oneil-cinemas-londonderry-aakgu"
 }
 WEEKDAYS = [day.lower() for day in calendar.day_name]
 WEEKDAY_ABBRS = [abbr.lower() for abbr in calendar.day_abbr]
