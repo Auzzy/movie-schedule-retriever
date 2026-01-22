@@ -37,6 +37,7 @@ def store_showtimes(theater, schedule):
     db = _connect()
     cur = db.cursor()
 
+    create_time = datetime.now().isoformat()
     for movie in schedule.movies:
         for showing in movie.showings:
             fields = (
@@ -48,11 +49,12 @@ def store_showtimes(theater, schedule):
                 showing.start.date().isoformat(),
                 showing.end.date().isoformat(),
                 showing.start.time().isoformat(),
-                showing.end.time().isoformat()
+                showing.end.time().isoformat(),
+                create_time
             )
             cur.execute(f"""
-                INSERT INTO showtimes(theater, title, format, is_open_caption, is_a_list, start_date, end_date, start_time, end_time)
-                VALUES ({_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH} )
+                INSERT INTO showtimes(theater, title, format, is_open_caption, is_a_list, start_date, end_date, start_time, end_time, create_time)
+                VALUES ({_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH}, {_PH})
                 ON CONFLICT(theater, title, start_date, start_time) DO NOTHING""",
                 fields
             )
@@ -74,6 +76,7 @@ def _init_db():
         end_date TEXT NOT NULL,
         start_time TEXT NOT NULL,
         end_time TEXT NOT NULL,
+        create_time TEXT NOT NULL,
         PRIMARY KEY(theater, title, start_date, start_time)
     )""")
 
