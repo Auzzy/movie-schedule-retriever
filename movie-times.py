@@ -11,6 +11,7 @@ from retriever import db
 from retriever.fandango_json import load_schedules_by_day
 from retriever.schedule import THEATER_SLUG_DICT, Filter, FullSchedule, ParseError, \
         date_range_str_parser as _raw_date_parser, time_str_parser as _raw_time_parser
+from retriever.movie_times_lib import collect_schedule, db_showtime_updates, send_email
 
 
 def _wrap_parser(parser):
@@ -25,96 +26,19 @@ date_range_str_parser = _wrap_parser(_raw_date_parser)
 time_str_parser = _wrap_parser(_raw_time_parser)
 
 
-def _ics_attachments(theaters_to_schedule):
-    attachments = []
-    for theater, schedule in theaters_to_schedule.items():
-        calendar = Calendar()
-        for movie in schedule.movies:
-            for showing in movie.showings:
-                start = showing.start
-                end = showing.end or (start + timedelta(minutes=5))
-                calendar.events.append(
-                    Event(summary=movie.name, start=start, end=end),
-                )
-
-        calendar_ics = IcsCalendarStream.calendar_to_ics(calendar).encode('utf-8')
-        attachments.append(
-            Attachment(
-                content=base64.b64encode(calendar_ics),
-                filename=f"{theater}.ics"
-            )
-        )
-
-    return attachments
-
-def _plaintext_attachments(theaters_to_schedule):
-    attachments = []
-    for theater, schedule in theaters_to_schedule.items():
-        schedule_text = schedule.output(name_only=False, date_only=True).encode('utf-8')
-        attachments.append(
-            Attachment(
-                content=base64.b64encode(schedule_text),
-                filename=f"{theater}.txt"
-            )
-        )
-
-    return attachments
-
-def _send_email(theaters_to_schedule, subject, sender, sender_name, receiver):
-    attachments = _plaintext_attachments(theaters_to_schedule) + _ics_attachments(theaters_to_schedule)
-
-    mail = Mail(
-        sender=Address(email=sender, name=sender_name),
-        to=[Address(email=receiver)],
-        subject=subject,
-        text="Schedules attached",
-        attachments=attachments
-    )
-
-    client = MailtrapClient(token=os.environ["MAILTRAP_API_TOKEN"])
-    client.send(mail)
-
-
-def _collect_schedule(theater, filepath, date_range, filter_params, quiet):
-    schedules_by_day = load_schedules_by_day(theater, filepath, date_range, filter_params, quiet)
-
-    if not schedules_by_day:
-        print("Could not find any data for the requested date(s).")
-        return
-
-    return FullSchedule.create(schedules_by_day)
-
-
 def db_main(theater, date_range):
-    schedule_range = _collect_schedule(theater, None, date_range, Filter.empty(), False)
-    raw_detected_showtimes = db.store_showtimes(theater, schedule_range)
-    all_showtimes = db.load_showtimes(theater, *date_range)
-
-    detected_showtimes = []
-    for showtime in raw_detected_showtimes:
-        detected_showtimes.append(tuple(showtime.values())[:-1])
-
-    deleted_showtimes = []
-    for showtime in all_showtimes:
-        showtime_dict = dict(showtime)
-        showtime_values = tuple(showtime_dict.values())[:-1]
-        if showtime_values not in detected_showtimes:
-            deleted_showtimes.append(showtime_dict)
-
-    db.delete_showtimes(deleted_showtimes)
+    schedule_range = collect_schedule(theater, None, date_range, Filter.empty(), False)
+    showtimes = db.store_showtimes(theater, schedule_range)
+    db_showtime_updates(theater, date_range, showtimes)
 
 def email_main(dates, theaters, sender, sender_name, receiver):
     theaters = theaters or THEATER_CODE_DICT.keys()
 
-    subject = f"Movie Schedules {dates[0].isoformat()}"
-    if dates[0] != dates[1]:
-        subject += f" to {dates[1].isoformat()}"
-
-    theaters_to_schedule = {theater: _collect_schedule(theater, None, dates, Filter.empty(), True) for theater in theaters}
-    _send_email(theaters_to_schedule, subject, sender, sender_name, receiver)
+    theaters_to_schedule = {theater: collect_schedule(theater, None, dates, Filter.empty(), True) for theater in theaters}
+    send_email(theaters_to_schedule, dates, sender, sender_name, receiver)
 
 def cli_main(theater, filepath, date_range, name_only, date_only, filter_params):
-    schedule_range = _collect_schedule(theater, filepath, date_range, filter_params, False)
+    schedule_range = collect_schedule(theater, filepath, date_range, filter_params, False)
     
     print(end="\n\n")
     print(schedule_range.output(name_only, date_only))
