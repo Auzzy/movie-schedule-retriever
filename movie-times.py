@@ -9,9 +9,10 @@ from mailtrap import Address, Attachment, Mail, MailtrapClient
 
 from retriever import db
 from retriever.fandango_json import load_schedules_by_day
-from retriever.schedule import THEATER_SLUG_DICT, Filter, FullSchedule, ParseError, \
+from retriever.schedule import Filter, FullSchedule, ParseError, \
         date_range_str_parser as _raw_date_parser, time_str_parser as _raw_time_parser
 from retriever.movie_times_lib import collect_schedule, db_showtime_updates, send_email
+from retriever.theaters import THEATER_NAMES
 
 
 def _wrap_parser(parser):
@@ -32,7 +33,7 @@ def db_main(theater, date_range):
     db_showtime_updates(theater, date_range, showtimes)
 
 def email_main(dates, theaters, sender, sender_name, receiver):
-    theaters = theaters or THEATER_CODE_DICT.keys()
+    theaters = theaters or THEATER_NAMES
 
     theaters_to_schedule = {theater: collect_schedule(theater, None, dates, Filter.empty(), True) for theater in theaters}
     send_email(theaters_to_schedule, dates, sender, sender_name, receiver)
@@ -61,7 +62,7 @@ def parse_args():
 
     cli_parser = subparsers.add_parser("plaintext", help="Output in plaintext to stdout")
     cli_parser.set_defaults(output="cli")
-    cli_parser.add_argument("--theater", default="AMC Methuen", choices=sorted(THEATER_SLUG_DICT.keys()))
+    cli_parser.add_argument("--theater", default="AMC Methuen", choices=sorted(THEATER_NAMES))
     input_group = cli_parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument("--filepath")
     input_group.add_argument("--date", type=date_range_str_parser, dest="date_range")
@@ -77,14 +78,14 @@ def parse_args():
     email_parser = subparsers.add_parser("email", help="Email the result.")
     email_parser.set_defaults(output="email")
     email_parser.add_argument("--date", type=date_range_str_parser, dest="date_range", default="next movie week")
-    email_parser.add_argument("--theater", action="append", choices=sorted(THEATER_SLUG_DICT.keys()), dest="theaters")
+    email_parser.add_argument("--theater", action="append", choices=sorted(THEATER_NAMES), dest="theaters")
     email_parser.add_argument("--from", dest="frm")
     email_parser.add_argument("--from-name", default="Test Movie Sender")
     email_parser.add_argument("--to")
 
     db_parser = subparsers.add_parser("db", help="Output the result to a database.")
     db_parser.set_defaults(output="db")
-    db_parser.add_argument("--theater", default="AMC Methuen", choices=sorted(THEATER_SLUG_DICT.keys()))
+    db_parser.add_argument("--theater", default="AMC Methuen", choices=sorted(THEATER_NAMES))
     db_parser.add_argument("--date", type=date_range_str_parser, dest="date_range", default="next movie week")
 
     return parser.parse_args()

@@ -8,7 +8,8 @@ from mailtrap import Address, Attachment, Mail, MailtrapClient
 
 from retriever import db
 from retriever.fandango_json import load_schedules_by_day
-from retriever.schedule import THEATER_SLUG_DICT, Filter, FullSchedule, ParseError
+from retriever.schedule import Filter, FullSchedule, ParseError
+from retriever.theaters import timezone
 
 
 def _ics_attachments(theaters_to_schedule):
@@ -76,7 +77,10 @@ def collect_schedule(theater, filepath, date_range, filter_params, quiet):
 
 
 def db_showtime_updates(theater, date_range, raw_detected_showtimes):
-    all_showtimes = db.load_showtimes(theater, *date_range)
+    tz = timezone(theater)
+    aware_date_range = (date_range[0].astimezone(tz), date_range[1].astimezone(tz))
+
+    all_showtimes = db.load_showtimes(theater, *aware_date_range)
 
     detected_showtimes = []
     for showtime in raw_detected_showtimes:
