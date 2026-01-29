@@ -2,55 +2,40 @@ import calendar
 import re
 from datetime import date, datetime, timedelta
 
+from retriever.theaters import timezone
+from retriever.utils import offset_timezone
+
+
 RUNTIME_RE = re.compile(r"(?:(?P<hr>\d) hr)? ?(?:(?P<min>\d\d?) min)?")
 LANGUAGE_RE = re.compile("([a-z]+) spoken with ([a-z]+) subtitles")
 
-
-THEATER_CODE_DICT = {
-    "AMC Methuen": "aaoze",
-    "AMC Tyngsboro": "aadxs",
-    "AMC Boston Common": "aapnv",
-    "AMC Causeway": "aayqs",
-    "Apple Hooksett": "aauoc",
-    "Apple Merrimack": "aatgl",
-    "Showcase Randolph": "aaeea",
-    "O'Neil Epping": "aawvb",
-    "O'Neil Londonderry": "aakgu"
-}
-THEATER_SLUG_DICT = {
-    "AMC Methuen": "amc-methuen-20-aaoze",
-    "AMC Tyngsboro": "amc-tyngsboro-12-aadxs",
-    "AMC Boston Common": "amc-boston-common-19-aapnv",
-    "AMC Causeway": "amc-causeway-13-aayqs",
-    "Apple Hooksett": "apple-cinemas-hooksett-imax-aauoc",
-    "Apple Merrimack": "apple-cinemas-merrimack-aatgl",
-    "Showcase Randolph": "showcase-cinemas-de-lux-randolph-aaeea",
-    "O'Neil Epping": "oneil-cinemas-at-brickyard-square-aawvb",
-    "O'Neil Londonderry": "oneil-cinemas-londonderry-aakgu"
-}
 WEEKDAYS = [day.lower() for day in calendar.day_name]
 WEEKDAY_ABBRS = [abbr.lower() for abbr in calendar.day_abbr]
 MONTHS = [day.lower() for day in calendar.month_name]
 MONTH_ABBRS = [abbr.lower() for abbr in calendar.month_abbr]
 PIVOT_DAY = WEEKDAYS.index("thursday")
 
+SYSTEM_TZNAME = datetime.now().astimezone().tzname()
+
 
 class ParseError(ValueError):
     pass
 
 
-def time_str_parser(value):
+def time_str_parser(value, *, tzname=None):
+    tz = offset_timezone(tzname or SYSTEM_TZNAME)
     if value[-1] in ("p", "a"):
         value = value.replace('p', 'pm').replace('a', 'am')
     time_fmt = "%I:%M%p" if value[-2:] in ("pm", "am") else "%H:%M"
     try:
-        return datetime.strptime(value, time_fmt).time()
+        return datetime.strptime(value, time_fmt).replace(tzinfo=tz).timetz()
     except ValueError:
         raise ParseError("Expected time in HH:MM format, optionally with am/pm.")
 
-def date_str_parser(value):
+def date_str_parser(value, *, tzname=None):
+    tz = offset_timezone(tzname or SYSTEM_TZNAME)
     value = value.lower()
-    today = date.today()
+    today = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
     if value == "today":
         return today
     elif value == "tomorrow":
@@ -60,7 +45,7 @@ def date_str_parser(value):
         return today + timedelta(days=(weekdayno - today.weekday()) % 7)
     else:
         try:
-            showdate = date.fromisoformat(value)
+            showdate = datetime.fromisoformat(value).replace(tz=tz)
         except ValueError:
             raise ParseError("Expected date in ISO format (YYYY-MM-DD).")
 
@@ -69,15 +54,16 @@ def date_str_parser(value):
 
         return showdate
 
-def date_range_str_parser(value):
-    today = date.today()
+def date_range_str_parser(value, *, tzname=None):
+    tz = offset_timezone(tzname or SYSTEM_TZNAME)
+    today = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
     if value in MONTHS or value in MONTH_ABBRS:
         monthno = MONTHS.index(value) if value in MONTHS else MONTH_ABBRS.index(value)
         year = today.year + (0 if today.month <= monthno else 1)
         start_day = today.day if today.month == monthno else 1
-        start = date(year=year, month=monthno, day=start_day)
+        start = datetime(year=year, month=monthno, day=start_day, tz=tz)
         end_day = calendar.monthrange(year, monthno)[1]
-        end = date(year=year, month=monthno, day=end_day)
+        end = datetime(year=year, month=monthno, day=end_day, tz=tz)
     elif value.lower() == "movie week":
         start = today
         days_left = 6 if start.weekday() == PIVOT_DAY else ((PIVOT_DAY - start.weekday() - 1) % 7)
@@ -144,19 +130,20 @@ class Showing:
             case value: return fmt
 
     @staticmethod
-    def _parse_showtime(showtime_str):
+    def _parse_showtime(showtime_str, theater):
+        tz = timezone(theater)
         showtime_str = showtime_str.replace('p', 'pm').replace('a', 'am')
-        return datetime.strptime(showtime_str, "%I:%M%p").time()
+        return datetime.strptime(showtime_str, "%I:%M%p").replace(tzinfo=tz).timetz()
 
     @staticmethod
-    def create(attributes, raw_start_time, runtime_min, day):
+    def create(attributes, raw_start_time, runtime_min, day, theater):
         fmt = Showing._simplify_format(attributes[0])
         attributes = [a.lower() for a in attributes]
         languages = [attr.rsplit(maxsplit=1)[0] for attr in attributes if attr.lower().endswith("language")]
         is_open_caption = "open caption" in attributes
         no_alist = "alternative content" in attributes or "no passes" in attributes
 
-        start_time = Showing._parse_showtime(raw_start_time)
+        start_time = Showing._parse_showtime(raw_start_time, theater)
         start = datetime.combine(day, start_time)
         end = start + timedelta(minutes=runtime_min)
         return Showing(fmt, languages, is_open_caption, no_alist, start, end)
@@ -170,7 +157,7 @@ class Showing:
         self.end = end
 
     def filter(self, filter_params):
-        return filter_params.apply_start_filter(self.start.time())
+        return filter_params.apply_start_filter(self.start.timetz())
 
     def output(self, show_date):
         date_str = f"{self.start.strftime('%a %B %d')} " if show_date else ""
@@ -204,9 +191,9 @@ class Movie:
         self.runtime_min = runtime_min
         self.showings = []
 
-    def add_raw_showings(self, attributes, raw_times, day):
+    def add_raw_showings(self, attributes, raw_times, day, theater):
         for raw_time in raw_times:
-            self.showings.append(Showing.create(attributes, raw_time, self.runtime_min, day))
+            self.showings.append(Showing.create(attributes, raw_time, self.runtime_min, day, theater))
 
     @property
     def first(self):

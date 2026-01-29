@@ -4,10 +4,11 @@ import json
 import requests
 from datetime import date, timedelta
 
-from retriever.schedule import DaySchedule, THEATER_CODE_DICT, THEATER_SLUG_DICT
+from retriever.schedule import DaySchedule
+from retriever.theaters import THEATERS
 
 
-def _load_schedule(showtimes_json):
+def _load_schedule(showtimes_json, theater):
     day = date.fromisoformat(showtimes_json["viewModel"]["date"])
     schedule = DaySchedule(day)
     for movie_info in showtimes_json["viewModel"]["movies"]:
@@ -34,14 +35,14 @@ def _load_schedule(showtimes_json):
                 attributes = [heading]
 
             raw_showtimes = [showtime["date"] for showtime in showtimes_listing["showtimes"]]
-            movie.add_raw_showings(attributes, raw_showtimes, day)
+            movie.add_raw_showings(attributes, raw_showtimes, day, theater)
 
     return schedule
 
 
 def _retrieve_json(theater, showdate):
-    url = f"https://www.fandango.com/napi/theaterMovieShowtimes/{THEATER_CODE_DICT[theater]}?startDate={showdate.isoformat()}"
-    headers = {"referer": f"https://www.fandango.com/{THEATER_SLUG_DICT[theater]}/theater-page?format=all&date={showdate.isoformat()}"}
+    url = f"https://www.fandango.com/napi/theaterMovieShowtimes/{THEATERS[theater]['code']}?startDate={showdate.date().isoformat()}"
+    headers = {"referer": f"https://www.fandango.com/{THEATERS[theater]['slug']}/theater-page?format=all&date={showdate.date().isoformat()}"}
     return requests.get(url, headers=headers).json()
 
 
@@ -62,7 +63,7 @@ def load_schedules_by_day(theater, filepath, date_range, filter_params, quiet=Fa
         print(".", end="", flush=True)
     for showtimes_json in _showtimes_iter(theater, filepath, date_range):
         if "viewModel" in showtimes_json:
-            schedule = _load_schedule(showtimes_json)
+            schedule = _load_schedule(showtimes_json, theater)
             filtered_schedule = schedule.filter(filter_params)
             schedules_by_day.append(filtered_schedule)
 
