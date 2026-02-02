@@ -36,7 +36,7 @@ def load_showtimes(theater, first_time, last_time):
     for row in cur.fetchall():
         row_dict = dict(row)
         row_dict["is_open_caption"] = row["is_open_caption"] == 1
-        row_dict["is_a_list"] = row["is_a_list"] == 1
+        row_dict["no_alist"] = row["no_alist"] == 1
         rows.append(row_dict)
     return rows
 
@@ -48,14 +48,14 @@ def store_showtimes(theater, schedule):
     inserted = []
     for movie in schedule.movies:
         for showing in movie.showings:
-            field_names = ("theater", "title", "format", "is_open_caption", "is_a_list", "start_time", "end_time", "create_time")
+            field_names = ("theater", "title", "format", "is_open_caption", "no_alist", "start_time", "end_time", "create_time")
             field_names_str = ", ".join(field_names)
             field_values = (
                 theater,
                 movie.name,
                 showing.fmt,
                 int(showing.is_open_caption),
-                int(not showing.no_alist),
+                int(showing.no_alist),
                 showing.start.isoformat(),
                 showing.end.isoformat(),
                 create_time
@@ -64,7 +64,7 @@ def store_showtimes(theater, schedule):
             cur.execute(f"""
                 INSERT INTO showtimes({field_names_str})
                 VALUES ({', '.join([_PH] * len(field_names))})
-                ON CONFLICT(theater, title, format, is_open_caption, is_a_list, start_time) DO NOTHING""",
+                ON CONFLICT(theater, title, format, is_open_caption, no_alist, start_time) DO NOTHING""",
                 field_values
             )
 
@@ -79,7 +79,7 @@ def delete_showtimes(showtimes_dicts):
 
     delete_time = datetime.now(timezone.utc).isoformat()
     for showtime in showtimes_dicts:
-        delete_field_names = ("theater", "title", "format", "is_open_caption", "is_a_list", "start_time")
+        delete_field_names = ("theater", "title", "format", "is_open_caption", "no_alist", "start_time")
         delete_field_where_str = " and ".join([f"{field} = {_PH}" for field in delete_field_names])
         delete_field_values = tuple([showtime[field] for field in delete_field_names])
         cur.execute(f"DELETE FROM showtimes WHERE {delete_field_where_str}", delete_field_values)
@@ -105,11 +105,11 @@ def _init_db():
         title TEXT NOT NULL,
         format TEXT,
         is_open_caption INT NOT NULL,
-        is_a_list INT NOT NULL,
+        no_alist INT NOT NULL,
         start_time TEXT NOT NULL,
         end_time TEXT NOT NULL,
         create_time TEXT NOT NULL,
-        PRIMARY KEY(theater, title, format, is_open_caption, is_a_list, start_time)
+        PRIMARY KEY(theater, title, format, is_open_caption, no_alist, start_time)
     )""")
 
     # I could do this as a soft delete from showtimes. But this allows
@@ -120,7 +120,7 @@ def _init_db():
         title TEXT NOT NULL,
         format TEXT,
         is_open_caption INT NOT NULL,
-        is_a_list INT NOT NULL,
+        no_alist INT NOT NULL,
         start_time TEXT NOT NULL,
         end_time TEXT NOT NULL,
         delete_time TEXT NOT NULL
