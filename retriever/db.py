@@ -31,7 +31,14 @@ def load_showtimes(theater, first_time, last_time):
         ORDER BY s.title""",
         (theater, first_time, last_time)
     )
-    return cur.fetchall()
+
+    rows = []
+    for row in cur.fetchall():
+        row_dict = dict(row)
+        row_dict["is_open_caption"] = row["is_open_caption"] == 1
+        row_dict["is_a_list"] = row["is_a_list"] == 1
+        rows.append(row_dict)
+    return rows
 
 def store_showtimes(theater, schedule):
     db = _connect()
