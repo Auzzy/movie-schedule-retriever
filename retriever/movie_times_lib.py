@@ -76,21 +76,21 @@ def collect_schedule(theater, filepath, date_range, filter_params, quiet):
     return FullSchedule.create(schedules_by_day)
 
 
-def db_showtime_updates(theater, date_range, raw_detected_showtimes):
+def db_showtime_updates(theater, date_range, detected_showtimes):
     tz = timezone(theater)
     aware_date_range = (date_range[0].astimezone(tz), date_range[1].astimezone(tz))
 
     all_showtimes = db.load_showtimes(theater, *aware_date_range)
 
-    detected_showtimes = []
-    for showtime in raw_detected_showtimes:
-        detected_showtimes.append(tuple(showtime.values())[:-1])
+    for showtime in detected_showtimes:
+        del showtime["create_time"]
 
     deleted_showtimes = []
     for showtime in all_showtimes:
         showtime_dict = dict(showtime)
-        showtime_values = tuple(showtime_dict.values())[:-1]
-        if showtime_values not in detected_showtimes:
+        del showtime_dict["create_time"]
+
+        if showtime_dict not in detected_showtimes:
             deleted_showtimes.append(showtime_dict)
 
     db.delete_showtimes(deleted_showtimes)

@@ -60,13 +60,18 @@ def store_showtimes(theater, schedule):
                 showing.end.isoformat(),
                 create_time
             )
-            inserted.append(dict(zip(field_names, field_values)))
+            
             cur.execute(f"""
                 INSERT INTO showtimes({field_names_str})
                 VALUES ({', '.join([_PH] * len(field_names))})
                 ON CONFLICT(theater, title, format, is_open_caption, no_alist, start_time) DO NOTHING""",
                 field_values
             )
+            
+            inserted_dict = dict(zip(field_names, field_values))
+            inserted_dict["is_open_caption"] = inserted_dict["is_open_caption"] == 1
+            inserted_dict["no_alist"] = inserted_dict["no_alist"] == 1
+            inserted.append(inserted_dict)
 
     db.commit()
     db.close()
@@ -81,12 +86,14 @@ def delete_showtimes(showtimes_dicts):
     for showtime in showtimes_dicts:
         delete_field_names = ("theater", "title", "format", "is_open_caption", "no_alist", "start_time")
         delete_field_where_str = " and ".join([f"{field} = {_PH}" for field in delete_field_names])
-        delete_field_values = tuple([showtime[field] for field in delete_field_names])
+        delete_field_raw_values = tuple([showtime[field] for field in delete_field_names])
+        delete_field_values = tuple([int(value) if isinstance(value, bool) else value for value in delete_field_raw_values])
         cur.execute(f"DELETE FROM showtimes WHERE {delete_field_where_str}", delete_field_values)
 
-        insert_field_names = delete_field_names + ("end_time", "delete_time")
+        new_insert_field_names = ("end_time", "delete_time")
+        insert_field_names = delete_field_names + new_insert_field_names
         insert_field_names_str = ", ".join(insert_field_names)
-        insert_field_values = tuple([showtime[field] for field in insert_field_names[:-1]])
+        insert_field_values = delete_field_values + tuple([showtime[field] for field in new_insert_field_names[:-1]])
         cur.execute(f"""
             INSERT INTO deleted_showtimes({insert_field_names_str})
             VALUES ({', '.join([_PH] * len(insert_field_names))})""",
