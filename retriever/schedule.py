@@ -119,15 +119,21 @@ class Filter:
 
 class Showing:
     @staticmethod
-    def _simplify_format(fmt):
-        match fmt.lower():
-            case "dolby cinema @ amc": return "Dolby"
-            case "reald 3d": return "3D"
-            case "digital 3d": return "3D"
-            case "acx": return "Apple Cinemas Experience"
-            case "laser at amc": return "Standard"
-            case "reserved seating": return "Standard"
-            case value: return fmt
+    def _attributes_to_fmt(raw_attributes):
+        attributes = [a.lower() for a in raw_attributes]
+        if "dolby cinema @ amc" in attributes:
+            return "Dolby"
+        elif "imax" in attributes:
+            return "IMAX"
+        elif "xl at amc" in attributes:
+            return "XL at AMC"
+        elif "reald 3d" in attributes or "digital 3d" in attributes:
+            return "3D"
+        elif "acx" in attributes:
+            return "Apple Cinemas Experience"
+        elif "laser at amc" in attributes:
+            return "Standard"
+        return raw_attributes[0]
 
     @staticmethod
     def _parse_showtime(showtime_str, theater):
@@ -137,7 +143,7 @@ class Showing:
 
     @staticmethod
     def create(attributes, raw_start_time, runtime_min, day, theater):
-        fmt = Showing._simplify_format(attributes[0])
+        fmt = Showing._attributes_to_fmt(attributes)
         attributes = [a.lower() for a in attributes]
         languages = [attr.rsplit(maxsplit=1)[0] for attr in attributes if attr.lower().endswith("language")]
         is_open_caption = "open caption" in attributes
