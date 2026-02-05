@@ -20,16 +20,22 @@ def _connect():
         db.row_factory = sqlite3.Row
         return db
 
-def load_showtimes(theater, first_time, last_time):
+def load_showtimes(theater, first_time, last_time, title=None):
     db = _connect()
     cur = db.cursor()
+
+    where_title = ""
+    query_params = (theater, first_time, last_time)
+    if title:
+        where_title = f" AND s.title = {_PH}"
+        query_params += (title, )
 
     cur.execute(f"""
         SELECT *
         FROM showtimes s
-        WHERE s.theater = {_PH} AND s.start_time{_DATETIME} >= {_PH} AND s.start_time{_DATETIME} <= {_PH}
+        WHERE s.theater = {_PH} AND s.start_time{_DATETIME} >= {_PH} AND s.start_time{_DATETIME} <= {_PH}{where_title}
         ORDER BY s.title""",
-        (theater, first_time, last_time)
+        query_params
     )
 
     rows = []
