@@ -125,13 +125,17 @@ class Showing:
             return "Dolby"
         elif "imax" in attributes:
             return "IMAX"
-        elif "xl at amc" in attributes:
-            return "XL at AMC"
         elif "reald 3d" in attributes or "digital 3d" in attributes:
             return "3D"
+        elif "xl at amc" in attributes:
+            return "XL at AMC"
+        elif "d-box" in attributes:
+            return "D-Box"
         elif "acx" in attributes:
             return "Apple Cinemas Experience"
-        elif "laser at amc" in attributes:
+        elif "screenx" in attributes:
+            return "ScreenX"
+        elif "laser at amc" in attributes or "standard format" in attributes:
             return "Standard"
         return raw_attributes[0]
 
