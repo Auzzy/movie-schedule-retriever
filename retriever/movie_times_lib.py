@@ -1,5 +1,7 @@
 import base64
+import json
 import os
+import traceback
 
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
@@ -11,6 +13,12 @@ from retriever.fandango_json import load_schedules_by_day
 from retriever.schedule import Filter, FullSchedule, ParseError
 from retriever.theaters import timezone
 
+
+def _build_attachment(content, filename, *, encoding="utf-8"):
+    return Attachment(
+        content=base64.b64encode(content.encode(encoding)),
+        filename=filename
+    )
 
 def _ics_attachments(theaters_to_schedule):
     attachments = []
@@ -24,46 +32,44 @@ def _ics_attachments(theaters_to_schedule):
                     Event(summary=movie.name, start=start, end=end),
                 )
 
-        calendar_ics = IcsCalendarStream.calendar_to_ics(calendar).encode('utf-8')
-        attachments.append(
-            Attachment(
-                content=base64.b64encode(calendar_ics),
-                filename=f"{theater}.ics"
-            )
-        )
+        calendar_ics = IcsCalendarStream.calendar_to_ics(calendar)
+        attachments.append(_build_attachment(calendar_ics, f"{theater}.ics"))
 
     return attachments
 
 def _plaintext_attachments(theaters_to_schedule):
     attachments = []
     for theater, schedule in theaters_to_schedule.items():
-        schedule_text = schedule.output(name_only=False, date_only=True).encode('utf-8')
-        attachments.append(
-            Attachment(
-                content=base64.b64encode(schedule_text),
-                filename=f"{theater}.txt"
-            )
-        )
+        schedule_text = schedule.output(name_only=False, date_only=True)
+        attachments.append(_build_attachment(schedule_text, f"{theater}.txt"))
 
     return attachments
 
-def send_email(theaters_to_schedule, dates, sender, sender_name, receiver):
+def _send_email(subject, text, sender=None, sender_name=None, receiver=None, attachments=[]):
+    sender = sender or os.environ.get("MAILTRAP_SENDER")
+    sender_name = sender_name or os.environ.get("MAILTRAP_SENDER_NAME")
+    receiver = receiver or os.environ.get("MAILTRAP_RECEIVER")
+
+    mail = Mail(
+        sender=Address(email=sender, name=sender_name),
+        to=[Address(email=receiver)],
+        subject=subject,
+        text=text,
+        attachments=attachments
+    )
+
+    client = MailtrapClient(token=os.environ["MAILTRAP_API_TOKEN"])
+    client.send(mail)
+
+
+def email_theater_schedules(theaters_to_schedule, dates, sender, sender_name, receiver):
     attachments = _plaintext_attachments(theaters_to_schedule) + _ics_attachments(theaters_to_schedule)
 
     subject = f"Movie Schedules {dates[0].isoformat()}"
     if dates[0] != dates[1]:
         subject += f" to {dates[1].isoformat()}"
 
-    mail = Mail(
-        sender=Address(email=sender, name=sender_name),
-        to=[Address(email=receiver)],
-        subject=subject,
-        text="Schedules attached",
-        attachments=attachments
-    )
-
-    client = MailtrapClient(token=os.environ["MAILTRAP_API_TOKEN"])
-    client.send(mail)
+    _send_email(subject, "Schedules attached", sender, sender_name, receiver, attachments)
 
 
 def collect_schedule(theater, filepath, date_range, filter_params, quiet):
@@ -75,6 +81,15 @@ def collect_schedule(theater, filepath, date_range, filter_params, quiet):
 
     return FullSchedule.create(schedules_by_day)
 
+
+def _send_db_deletion_report(existing_showtimes, deleted_showtimes):
+    existing_showtimes_json = "[\n" + ",\n".join([f"  {json.dumps(s, sort_keys=True)}" for s in existing_showtimes]) + "\n]"
+    existing_attachment = _build_attachment(existing_showtimes_json, "pre-existing.json")
+
+    deleted_showtimes_json = "[\n" + ",\n".join([f"  {json.dumps(s, sort_keys=True)}" for s in deleted_showtimes]) + "\n]"
+    deleted_attachment = _build_attachment(deleted_showtimes_json, "deleted.json")
+
+    _send_email("Schedule Updater Deletion Report", "Deletion report attached",  attachments=[existing_attachment, deleted_attachment])
 
 def db_showtime_updates(theater, date_range, detected_showtimes):
     tz = timezone(theater)
@@ -94,3 +109,11 @@ def db_showtime_updates(theater, date_range, detected_showtimes):
             deleted_showtimes.append(showtime_dict)
 
     db.delete_showtimes(deleted_showtimes)
+
+    if deleted_showtimes:
+        _send_db_deletion_report(all_showtimes, deleted_showtimes)
+
+
+def send_error_email(exc):
+    error_str = traceback.format_exception(exc)
+    _send_email("Schedule Updater encountered an error", error_str)
