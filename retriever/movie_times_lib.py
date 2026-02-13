@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import traceback
+from datetime import timedelta
 
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
@@ -91,9 +92,11 @@ def _send_db_deletion_report(existing_showtimes, deleted_showtimes):
 
     _send_email("Schedule Updater Deletion Report", "Deletion report attached",  attachments=[existing_attachment, deleted_attachment])
 
-def db_showtime_updates(theater, date_range, detected_showtimes):
+def db_showtime_updates(theater, date_range, detected_showtimes, deletion_report=True):
     tz = timezone(theater)
-    aware_date_range = (date_range[0].astimezone(tz), date_range[1].astimezone(tz))
+
+    # The date_range is inclusive of the end time, but load_showtimes is not.
+    aware_date_range = (date_range[0].astimezone(tz), date_range[1].astimezone(tz) + timedelta(days=1))
 
     all_showtimes = db.load_showtimes(theater, *aware_date_range)
 
@@ -110,7 +113,7 @@ def db_showtime_updates(theater, date_range, detected_showtimes):
 
     db.delete_showtimes(deleted_showtimes)
 
-    if deleted_showtimes:
+    if deletion_report and deleted_showtimes:
         _send_db_deletion_report(all_showtimes, deleted_showtimes)
 
 

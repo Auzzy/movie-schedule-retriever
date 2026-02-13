@@ -27,10 +27,10 @@ date_range_str_parser = _wrap_parser(_raw_date_parser)
 time_str_parser = _wrap_parser(_raw_time_parser)
 
 
-def db_main(theater, date_range):
+def db_main(theater, date_range, deletion_report=True):
     schedule_range = collect_schedule(theater, None, date_range, Filter.empty(), False)
     showtimes = db.store_showtimes(theater, schedule_range)
-    db_showtime_updates(theater, date_range, showtimes)
+    db_showtime_updates(theater, date_range, showtimes, deletion_report)
 
 def email_main(dates, theaters, sender, sender_name, receiver):
     theaters = theaters or THEATER_NAMES
@@ -52,7 +52,7 @@ def main(args):
     elif args.output == "email":
         email_main(args.date_range, args.theaters, args.frm, args.from_name, args.to)
     elif args.output == "db":
-        db_main(args.theater, args.date_range)
+        db_main(args.theater, args.date_range, args.deletion_report)
 
 
 def parse_args():
@@ -87,6 +87,7 @@ def parse_args():
     db_parser.set_defaults(output="db")
     db_parser.add_argument("--theater", default="AMC Methuen", choices=sorted(THEATER_NAMES))
     db_parser.add_argument("--date", type=date_range_str_parser, dest="date_range", default="next movie week")
+    db_parser.add_argument("--deletion-report", action="store_true")
 
     return parser.parse_args()
 
