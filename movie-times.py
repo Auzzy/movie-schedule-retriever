@@ -11,7 +11,8 @@ from retriever import db
 from retriever.fandango_json import load_schedules_by_day
 from retriever.schedule import Filter, FullSchedule, ParseError, \
         date_range_str_parser as _raw_date_parser, time_str_parser as _raw_time_parser
-from retriever.movie_times_lib import collect_schedule, db_showtime_updates, email_theater_schedules
+from retriever.movie_times_lib import collect_schedule, db_showtime_updates, \
+        email_theater_schedules, send_deletion_report
 from retriever.theaters import THEATER_NAMES
 
 
@@ -30,7 +31,9 @@ time_str_parser = _wrap_parser(_raw_time_parser)
 def db_main(theater, date_range, deletion_report=True):
     schedule_range = collect_schedule(theater, None, date_range, Filter.empty(), False)
     showtimes = db.store_showtimes(theater, schedule_range)
-    db_showtime_updates(theater, date_range, showtimes, deletion_report)
+    deleted_showtimes = db_showtime_updates(theater, date_range, showtimes)
+    if deletion_report and deleted_showtimes:
+        send_deletion_report(deleted_showtimes)
 
 def email_main(dates, theaters, sender, sender_name, receiver):
     theaters = theaters or THEATER_NAMES

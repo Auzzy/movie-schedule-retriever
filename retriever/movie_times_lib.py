@@ -83,16 +83,7 @@ def collect_schedule(theater, filepath, date_range, filter_params, quiet):
     return FullSchedule.create(schedules_by_day)
 
 
-def _send_db_deletion_report(existing_showtimes, deleted_showtimes):
-    existing_showtimes_json = "[\n" + ",\n".join([f"  {json.dumps(s, sort_keys=True)}" for s in existing_showtimes]) + "\n]"
-    existing_attachment = _build_attachment(existing_showtimes_json, "pre-existing.json")
-
-    deleted_showtimes_json = "[\n" + ",\n".join([f"  {json.dumps(s, sort_keys=True)}" for s in deleted_showtimes]) + "\n]"
-    deleted_attachment = _build_attachment(deleted_showtimes_json, "deleted.json")
-
-    _send_email("Schedule Updater Deletion Report", "Deletion report attached",  attachments=[existing_attachment, deleted_attachment])
-
-def db_showtime_updates(theater, date_range, detected_showtimes, deletion_report=True):
+def db_showtime_updates(theater, date_range, detected_showtimes):
     tz = timezone(theater)
 
     # The date_range is inclusive of the end time, but load_showtimes is not.
@@ -113,8 +104,14 @@ def db_showtime_updates(theater, date_range, detected_showtimes, deletion_report
 
     db.delete_showtimes(deleted_showtimes)
 
-    if deletion_report and deleted_showtimes:
-        _send_db_deletion_report(all_showtimes, deleted_showtimes)
+    return deleted_showtimes
+
+
+def send_deletion_report(deleted_showtimes):
+    deleted_showtimes_json = "[\n" + ",\n".join([f"  {json.dumps(s, sort_keys=True)}" for s in deleted_showtimes]) + "\n]"
+    deleted_attachment = _build_attachment(deleted_showtimes_json, "deleted.json")
+
+    _send_email("Schedule Updater Deletion Report", "Deletion report attached",  attachments=[deleted_attachment])
 
 
 def send_error_email(exc):
