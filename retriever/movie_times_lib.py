@@ -2,7 +2,7 @@ import base64
 import json
 import os
 import traceback
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from ical.calendar import Calendar
 from ical.calendar_stream import IcsCalendarStream
@@ -85,21 +85,20 @@ def collect_schedule(theater, filepath, date_range, filter_params, quiet):
 
 def db_showtime_updates(theater, date_range, detected_showtimes):
     tz = timezone(theater)
+    now = datetime.now(tz).replace(microsecond=0).isoformat()
 
     # The date_range is inclusive of the end time, but load_showtimes is not.
     aware_date_range = (date_range[0].astimezone(tz), date_range[1].astimezone(tz) + timedelta(days=1))
-
-    all_showtimes = db.load_showtimes(theater, *aware_date_range)
 
     for showtime in detected_showtimes:
         del showtime["create_time"]
 
     deleted_showtimes = []
-    for showtime in all_showtimes:
+    for showtime in db.load_showtimes(theater, *aware_date_range):
         showtime_dict = dict(showtime)
         del showtime_dict["create_time"]
 
-        if showtime_dict not in detected_showtimes:
+        if now < showtime_dict['start_time'] and showtime_dict not in detected_showtimes:
             deleted_showtimes.append(showtime_dict)
 
     db.delete_showtimes(deleted_showtimes)

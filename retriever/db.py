@@ -88,7 +88,7 @@ def delete_showtimes(showtimes_dicts):
     db = _connect()
     cur = db.cursor()
 
-    delete_time = datetime.now(timezone.utc).isoformat()
+    delete_time = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     for showtime in showtimes_dicts:
         delete_field_names = ("theater", "title", "format", "is_open_caption", "no_alist", "start_time")
         delete_field_where_str = " and ".join([f"{field} = {_PH}" for field in delete_field_names])
