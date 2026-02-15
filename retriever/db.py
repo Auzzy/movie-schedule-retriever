@@ -109,6 +109,26 @@ def delete_showtimes(showtimes_dicts):
     db.commit()
     db.close()
 
+def load_deleted_showtimes(first_delete_time, last_delete_time):
+    db = _connect()
+    cur = db.cursor()
+
+    cur.execute(f"""
+        SELECT *
+        FROM deleted_showtimes s
+        WHERE s.delete_time{_DATETIME} >= {_PH} AND s.delete_time{_DATETIME} <= {_PH}
+        ORDER BY s.title""",
+        (first_delete_time, last_delete_time)
+    )
+
+    rows = []
+    for row in cur.fetchall():
+        row_dict = dict(row)
+        row_dict["is_open_caption"] = row["is_open_caption"] == 1
+        row_dict["no_alist"] = row["no_alist"] == 1
+        rows.append(row_dict)
+    return rows
+
 def _init_db():
     db = _connect()
     cur = db.cursor()
