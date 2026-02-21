@@ -136,6 +136,19 @@ def load_deleted_showtimes(first_delete_time, last_delete_time, *, clean=True):
         rows.append(row_dict)
     return rows
 
+def theaters_last_update():
+    db = _connect()
+    cur = db.cursor()
+    
+    cur.execute("""
+        SELECT theater, MAX(create_time) as last_update_time
+        FROM showtimes
+        GROUP BY theater"""
+    )
+
+    return {row["theater"]: row["last_update_time"] for row in cur.fetchall()}
+
+
 def _init_db():
     db = _connect()
     cur = db.cursor()
