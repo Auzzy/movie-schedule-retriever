@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import traceback
+from collections import defaultdict
 from datetime import datetime, timedelta
 
 from ical.calendar import Calendar
@@ -90,13 +91,9 @@ def db_showtime_updates(theater, date_range, detected_showtimes):
     # The date_range is inclusive of the end time, but load_showtimes is not.
     aware_date_range = (date_range[0].astimezone(tz), date_range[1].astimezone(tz) + timedelta(days=1))
 
-    for showtime in detected_showtimes:
-        del showtime["create_time"]
-
     deleted_showtimes = []
     for showtime in db.load_showtimes(theater, *aware_date_range):
         showtime_dict = dict(showtime)
-        del showtime_dict["create_time"]
 
         if now < showtime_dict['start_time'] and showtime_dict not in detected_showtimes:
             deleted_showtimes.append(showtime_dict)
@@ -106,8 +103,45 @@ def db_showtime_updates(theater, date_range, detected_showtimes):
     return deleted_showtimes
 
 
-def send_deletion_report(deleted_showtimes):
-    deleted_showtimes_json = "[\n" + ",\n".join([f"  {json.dumps(s, sort_keys=True)}" for s in deleted_showtimes]) + "\n]"
+def _true_deletion_filter(deleted_showtimes, current_showtimes):
+    def _drop_key(adict, key):
+        return {k: v for k, v, in adict.items() if k != key}
+
+    current_without_end = [_drop_key(showtime, "end_time") for showtime in current_showtimes]
+
+    filtered_deleted_showtimes = []
+    for showtime_dict in deleted_showtimes:
+        if showtime_dict["start_time"] == showtime_dict["end_time"] and _drop_key(showtime_dict, "end_time") in current_without_end:
+            print(f"SKIPPING {showtime_dict}")
+            continue
+
+        filtered_deleted_showtimes.append(showtime_dict)
+
+    return filtered_deleted_showtimes
+
+def send_deletion_report(day):
+    def _group_by_theater(showtimes):
+        showtimes_by_theater = defaultdict(list)
+        for showtime in showtimes:
+            showtimes_by_theater[showtime["theater"]].append(showtime)
+        return dict(showtimes_by_theater)
+
+    def _start_range(showtimes):
+        time_strs = sorted([s["start_time"] for s in showtimes])
+        start = datetime.fromisoformat(time_strs[0]).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = datetime.fromisoformat(time_strs[-1]).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        return start, end
+
+    day = day.replace(hour=0, minute=0, second=0, microsecond=0)
+    eod = day + timedelta(days=1)
+
+    deleted_showtimes_by_theater = _group_by_theater(db.load_deleted_showtimes(day, eod))
+    filtered_deleted_showtimes = []
+    for theater, deleted_showtimes in deleted_showtimes_by_theater.items():
+        theater_showtimes = db.load_showtimes(theater, *_start_range(deleted_showtimes))
+        filtered_deleted_showtimes.extend(_true_deletion_filter(deleted_showtimes, theater_showtimes))
+
+    deleted_showtimes_json = "[\n" + ",\n".join([f"  {json.dumps(s, sort_keys=True)}" for s in filtered_deleted_showtimes]) + "\n]"
     deleted_attachment = _build_attachment(deleted_showtimes_json, "deleted.json")
 
     _send_email("Schedule Updater Deletion Report", "Deletion report attached",  attachments=[deleted_attachment])

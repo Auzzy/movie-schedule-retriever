@@ -20,7 +20,7 @@ def _connect():
         db.row_factory = sqlite3.Row
         return db
 
-def load_showtimes(theater, first_time, last_time, title=None):
+def load_showtimes(theater, first_time, last_time, title=None, *, clean=True):
     db = _connect()
     cur = db.cursor()
 
@@ -43,10 +43,12 @@ def load_showtimes(theater, first_time, last_time, title=None):
         row_dict = dict(row)
         row_dict["is_open_caption"] = row["is_open_caption"] == 1
         row_dict["no_alist"] = row["no_alist"] == 1
+        if clean:
+            del row_dict["create_time"]
         rows.append(row_dict)
     return rows
 
-def store_showtimes(theater, schedule):
+def store_showtimes(theater, schedule, *, clean=True):
     db = _connect()
     cur = db.cursor()
 
@@ -77,6 +79,8 @@ def store_showtimes(theater, schedule):
             inserted_dict = dict(zip(field_names, field_values))
             inserted_dict["is_open_caption"] = inserted_dict["is_open_caption"] == 1
             inserted_dict["no_alist"] = inserted_dict["no_alist"] == 1
+            if clean:
+                del inserted_dict["create_time"]
             inserted.append(inserted_dict)
 
     db.commit()
@@ -109,7 +113,7 @@ def delete_showtimes(showtimes_dicts):
     db.commit()
     db.close()
 
-def load_deleted_showtimes(first_delete_time, last_delete_time):
+def load_deleted_showtimes(first_delete_time, last_delete_time, *, clean=True):
     db = _connect()
     cur = db.cursor()
 
@@ -126,6 +130,9 @@ def load_deleted_showtimes(first_delete_time, last_delete_time):
         row_dict = dict(row)
         row_dict["is_open_caption"] = row["is_open_caption"] == 1
         row_dict["no_alist"] = row["no_alist"] == 1
+        if clean:
+            del row_dict["delete_time"]
+            del row_dict["id"]
         rows.append(row_dict)
     return rows
 
